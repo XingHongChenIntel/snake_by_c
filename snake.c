@@ -78,10 +78,10 @@ void designGame(){
 	printf(" please chose the diffcuty (easy / medium / hard / master) : ");
 	char diffcuty[50];
 	scanf("%s", diffcuty);
-	if (!strcmp(diffcuty, "easy")) speed = 1000000;
-	if (!strcmp(diffcuty, "medium")) speed = 500000;
-	if (!strcmp(diffcuty, "hard")) speed = 200000;
-	if (!strcmp(diffcuty, "master")) speed = 100000;
+	if (!strcmp(diffcuty, "easy")) speed = 500000;
+	if (!strcmp(diffcuty, "medium")) speed = 200000;
+	if (!strcmp(diffcuty, "hard")) speed = 100000;
+	if (!strcmp(diffcuty, "master")) speed = 50000;
 }
 
 int genbean(){
