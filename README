@@ -1,0 +1,6 @@
+this is a very small eat bean game, hope can extend it to more fun.
+
+build:
+      just run "gcc snake.c -lpthread", then you can have fun.
+
+you may find some eggs.
