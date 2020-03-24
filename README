@@ -1,6 +1,10 @@
 this is a very small eat bean game, hope can extend it to more fun.
 
 build:
-      just run "gcc snake.c -lpthread", then you can have fun.
+      just run "gcc snake.c -lpthread", then(./a.out) you can have fun.
+      
+please maximize your terminal.
 
 you may find some eggs.
+
+for now ,the top scroe is 49.
