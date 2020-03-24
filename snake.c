@@ -5,10 +5,22 @@
 #include<termio.h>
 #include<pthread.h>
 #include<time.h>
+// #define NDEBUG
 #include<assert.h>
 
-#define Width 65
-#define Heigh 25
+static int Width=60;
+static int Heigh=25;
+char **pizz;
+
+#define mazecount 3
+typedef struct mazemap{
+	int width;
+	int heigh;
+	int doorx;
+	int doory;
+}mazemap;
+
+mazemap maze[mazecount] = { {60, 25, 2, 0}, {100, 50, 0, 70}, {45, 25, 24, 10} };
 
 static struct termios new_settings,stored_settings;
 static int keyNumber;
@@ -18,7 +30,7 @@ static pthread_t workflow;
 
 static unsigned int speed = 1000000;
 int crush = 0;
-char pizz[Heigh][Width+1];
+
 
 int stridexmap[4] = {-1, 1, 0, 0};
 int strideymap[4] = {0, 0, -1, 1};
@@ -42,13 +54,16 @@ typedef struct snakebody{
 
 snakebody *head;
 
+int initpizz(int No);
+int destorypizz();
+
 void initkeyboard()
 {
 	tcgetattr(0,&stored_settings);
 	new_settings = stored_settings;
 	new_settings.c_lflag &= (~ICANON);
-        new_settings.c_lflag &= (~ECHO);
-        new_settings.c_cc[VTIME] = 0;
+	new_settings.c_lflag &= (~ECHO);
+	new_settings.c_cc[VTIME] = 0;
 	new_settings.c_cc[VMIN] = 1;
 	tcsetattr(0, TCSANOW, &new_settings);
 }
@@ -106,10 +121,48 @@ int genbean(){
 	return 0;
 }
 
+int convertsnake(){
+	snakebody *cursor = head;
+	enum keydirect initdir;
+	switch (keyvalue)
+	{
+		case up:
+			head->x = Heigh-2;
+			head->y = Width/2;
+			initdir = down;
+			break;
+		case down:
+			head->x = 1;
+			head->y = Width/2;
+			initdir = up;
+			break;
+		case left:
+			head->x = Heigh/2;
+			head->y = Width-2;
+			initdir = right;
+			break;
+		case right:
+			head->x = Heigh/2;
+			head->y = 1;
+			initdir = left;
+			break;
+		default:
+			break;
+	}
+	while(cursor->next){
+		cursor->next->x = cursor->x + stridexmap[initdir];
+		cursor->next->y = cursor->y + strideymap[initdir];
+		cursor->next->stridex = stridexmap[keyvalue];
+		cursor->next->stridey = strideymap[keyvalue];
+		cursor = cursor->next; 
+	}
+	return 0;
+}
+
 int crushonwall(){
 	int x = head->x;
 	int y = head->y;
-	if(x==0 || x== Heigh-1 || y == 0 || y == Width-1){
+	if((x==0 || x== Heigh-1 || y == 0 || y == Width-1) && pizz[x][y] != '$'){
 		crush = 1;
 		return crush;
 	}
@@ -145,20 +198,41 @@ int crushonbody(){
 	return crush;
 }
 
+int crushondoor(){
+	int ret=0;
+	if(pizz[head->x][head->y] == '$'){
+		ret = destorypizz();
+		assert(!ret);
+		int mazeNO = rand()%mazecount;
+		assert(mazeNO<mazecount);
+		ret = initpizz(mazeNO);
+		assert(!ret);
+		ret = convertsnake();
+		assert(!ret);
+		while(genbean());
+	}
+	return 0;
+}
+
 void handlecrush(){
 	if (crush){
-		char *endlog = "                 your  are   loser !!!!!!!!           ";
-		memcpy(pizz[Heigh/2], endlog, strlen(endlog));
+		// char *endlog = "                 your  are   loser !!!!!!!!           ";
+		char *log = "you loser!";
+		if (Width>10){
+			memcpy(&pizz[Heigh/2][Width/2-5], log, strlen(log));		
+		}
 	}else{
         snakebody *cursor = head;
 		while(cursor){
-			pizz[cursor->x][cursor->y] = 'O';
+			if (cursor->x > 0 && cursor->x < Heigh-1 && cursor->y >0 && cursor->y < Width-1){
+				pizz[cursor->x][cursor->y] = 'O';			
+			}
 			cursor = cursor->next;
         }
 	}
 }
 
-void printsnake(){
+void movesnake(){
 	snakebody* cursor = head;
 	int newstridex=0;
 	int newstridey=0;
@@ -186,7 +260,9 @@ void printsnake(){
 		cursor->stridex = newstridex;
 		cursor->stridey = newstridey;
 		if(!cursor->next){
-			pizz[cursor->x][cursor->y] = ' ';
+			if (cursor->x > 0 && cursor->x < Heigh-1 && cursor->y >0 && cursor->y < Width-1){
+				pizz[cursor->x][cursor->y] = ' ';		
+			}
 			tailx = cursor->x;
 			taily = cursor->y;
 		}
@@ -199,6 +275,7 @@ void printsnake(){
 	crushonbean(tailx, taily, newstridex, newstridey);
 	crushonwall();
 	crushonbody();
+	crushondoor();
 	handlecrush();
 	for(int i=0; i<Heigh; i++){
 		printf("%s\n",pizz[i]);
@@ -235,8 +312,13 @@ void initsnake(){
 	}
 }
 
-void initpizz(){
-	initkeyboard();
+int initpizz(int No){
+	Heigh = maze[No].heigh;
+	Width = maze[No].width;
+	pizz = (char **) malloc(sizeof(char *)*Heigh);
+	for (int i=0; i<Heigh; i++){
+		pizz[i] = (char*) malloc(sizeof(char)*(Width+1));
+	}
 	for(int i=0;i<Heigh;i++){
 		for(int j=0;j<=Width;j++){
 			if(j==Width){
@@ -252,12 +334,26 @@ void initpizz(){
 			}	
 		}
 	}
-	initsnake();
-	while(genbean()){}
+	int doorx = maze[No].doorx;
+	int doory = maze[No].doory;
+	pizz[doorx][doory] = '$';
+	return 0;
+}
+
+int destorypizz(){
+	for(int i=0; i<Heigh; i++){
+		free(pizz[i]);
+	}
+	free(pizz);
+	return 0;
 }
 
 void *Controlflow(void *arg){
-	initpizz();
+	int ret = 0;
+	initkeyboard();
+	initpizz(0);
+	initsnake();
+	while(genbean());
 	while(1){
 		pthread_mutex_lock(&mutex);
 		printHead();
@@ -279,7 +375,7 @@ void *Controlflow(void *arg){
 				keyvalue = right;
 				break;
 		}	
-		printsnake();
+		movesnake();
 		if(crush){
 			closekeyboard();
 			pthread_mutex_unlock(&mutex);
@@ -288,6 +384,8 @@ void *Controlflow(void *arg){
 		pthread_mutex_unlock(&mutex);
 		usleep(speed);
 	}
+	ret = destorypizz();
+	assert(!ret);
 }
 
 int freesnake(){
