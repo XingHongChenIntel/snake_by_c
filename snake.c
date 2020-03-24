@@ -36,6 +36,7 @@ static pthread_t keyboardlisten;
 static pthread_t workflow;
 
 static unsigned int speed = 1000000;
+static unsigned int initspeed = 1000000;
 int crush = 0;
 
 
@@ -100,10 +101,10 @@ void designGame(){
 	printf(" please chose the diffcuty (easy / medium / hard / master) : ");
 	char diffcuty[50];
 	scanf("%s", diffcuty);
-	if (!strcmp(diffcuty, "easy")) speed = 500000;
-	if (!strcmp(diffcuty, "medium")) speed = 200000;
-	if (!strcmp(diffcuty, "hard")) speed = 100000;
-	if (!strcmp(diffcuty, "master")) speed = 50000;
+	if (!strcmp(diffcuty, "easy")) initspeed = 500000;
+	if (!strcmp(diffcuty, "medium")) initspeed = 200000;
+	if (!strcmp(diffcuty, "hard")) initspeed = 100000;
+	if (!strcmp(diffcuty, "master")) initspeed = 50000;
 }
 
 int genbean(){
@@ -343,7 +344,7 @@ void initsnake(){
 }
 
 int initpizz(int No){
-	speed = 200000;
+	speed = initspeed;
 	Heigh = maze[No].heigh;
 	Width = maze[No].width;
 	pizz = (char **) malloc(sizeof(char *)*Heigh);
