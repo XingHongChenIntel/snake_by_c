@@ -12,15 +12,22 @@ static int Width=60;
 static int Heigh=25;
 char **pizz;
 
-#define mazecount 3
+#define mazecount 9
 typedef struct mazemap{
 	int width;
 	int heigh;
 	int doorx;
 	int doory;
+	int barrier;
 }mazemap;
 
-mazemap maze[mazecount] = { {60, 25, 2, 0}, {100, 50, 0, 70}, {45, 25, 24, 10} };
+mazemap maze[mazecount] = { {60, 25, 2, 0, 0}, {100, 50, 0, 70, 20}, {45, 25, 24, 10, 5}, 
+							{45, 50, 15, 44, 30}, {100, 25, 0, 20, 50}, {70, 30, 40, 0, 60}, 
+							{60, 30, 0, 10, 15}, {150, 50, 49, 70, 80}, {15, 20, 0, 1, 2}, 
+};
+
+#define specialNum 2
+char specialbean[specialNum] = {'<', '>'};
 
 static struct termios new_settings,stored_settings;
 static int keyNumber;
@@ -104,19 +111,21 @@ int genbean(){
 	int randx,randy;
 	randx = rand()%(Heigh-2)+1;
 	randy = rand()%(Width-2)+1;
-	snakebody *temp = head;
-	int checktag = 0;
-	while(temp){
-		if (randx == temp->x && randy == temp->y){
-			checktag = 1;
-			break;
-		}
-		temp = temp->next;
+	int bean = rand()%10;
+	char spbean = 'o';
+	if (bean < 6){
+		spbean = 'o';
+	}else if (bean<8)
+	{
+		spbean = '<';
+	}else if(bean<10){
+		spbean = '>';
 	}
-	if (checktag){
+	
+	if (pizz[randx][randy]!=' '){
 		return 1;
 	}else{
-		pizz[randx][randy] = 'o';
+		pizz[randx][randy] = spbean;
 	}
 	return 0;
 }
@@ -186,6 +195,17 @@ int crushonbean(int x, int y, int stridex, int stridey){
 	return 0;
 }
 
+int crushonspbean(){
+	if(pizz[head->x][head->y] == '<'){
+		speed = speed*3/2;
+		while(genbean()){}
+	}else if(pizz[head->x][head->y] == '>'){
+		speed = speed/2;
+		while(genbean()){}
+	}
+	return 0;
+}
+
 int crushonbody(){
 	snakebody *cursor = head->next;
 	while(cursor){
@@ -210,6 +230,14 @@ int crushondoor(){
 		ret = convertsnake();
 		assert(!ret);
 		while(genbean());
+	}
+	return 0;
+}
+
+int crushonbarrier(){
+	if(pizz[head->x][head->y] == 'x'){
+		crush = 1;
+		return crush;
 	}
 	return 0;
 }
@@ -273,7 +301,9 @@ void movesnake(){
 		cursor = cursor->next;
 	}
 	crushonbean(tailx, taily, newstridex, newstridey);
+	crushonspbean();
 	crushonwall();
+	crushonbarrier();
 	crushonbody();
 	crushondoor();
 	handlecrush();
@@ -313,6 +343,7 @@ void initsnake(){
 }
 
 int initpizz(int No){
+	speed = 200000;
 	Heigh = maze[No].heigh;
 	Width = maze[No].width;
 	pizz = (char **) malloc(sizeof(char *)*Heigh);
@@ -337,6 +368,12 @@ int initpizz(int No){
 	int doorx = maze[No].doorx;
 	int doory = maze[No].doory;
 	pizz[doorx][doory] = '$';
+	for (int i=0; i<maze[No].barrier; i++){
+		int randx,randy;
+		randx = rand()%(Heigh-2)+1;
+		randy = rand()%(Width-2)+1;
+		pizz[randx][randy] = 'x';
+	}
 	return 0;
 }
 
