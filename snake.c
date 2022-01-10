@@ -485,5 +485,6 @@ int main(int argv, char *argc[]){
 	freesnake();
 	closekeyboard();
 
+////hahhahahahah
 	return 0;
 }
