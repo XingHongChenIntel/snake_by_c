@@ -83,8 +83,8 @@ void closekeyboard(){
 void printHead(){
         printf("\033c");
         printf("--------------------------hello, player-----------------------!\n");
-        printf("-- Author: flex cxh                                          --\n");
-        printf("-- Date:   2020-03-11                                        --\n");
+        printf("-- Author: NPG-QAT xinghong                                  --\n");
+        printf("-- Date:   2022-06-11                                        --\n");
         printf("--                                                           --\n");
         printf("--------------------------------------------------------------!\n");
 	return;
@@ -485,8 +485,5 @@ int main(int argv, char *argc[]){
 	freesnake();
 	closekeyboard();
 
-////hahhahahahah
-
-// fahfalskjflkasdf
 	return 0;
 }
