@@ -5,52 +5,18 @@
 #include<termio.h>
 #include<pthread.h>
 #include<time.h>
+#include<stdatomic.h>
+#include<semaphore.h>
 // #define NDEBUG
 #include<assert.h>
 
-static int Width=60;
-static int Heigh=25;
-char **pizz;
-
-#define mazecount 9
-typedef struct mazemap{
-	int width;
-	int heigh;
-	int doorx;
-	int doory;
-	int barrier;
-}mazemap;
-
-mazemap maze[mazecount] = { {60, 25, 2, 0, 0}, {100, 50, 0, 70, 20}, {45, 25, 24, 10, 5}, 
-							{45, 50, 15, 44, 30}, {100, 25, 0, 20, 50}, {70, 30, 40, 0, 60}, 
-							{60, 30, 0, 10, 15}, {150, 50, 49, 70, 80}, {15, 20, 0, 1, 2}, 
-};
-
-#define specialNum 2
-char specialbean[specialNum] = {'<', '>'};
-
-static struct termios new_settings,stored_settings;
-static int keyNumber;
-static pthread_mutex_t mutex;
-static pthread_t keyboardlisten;
-static pthread_t workflow;
-
-static unsigned int speed = 1000000;
-static unsigned int initspeed = 1000000;
-int crush = 0;
-
-
-int stridexmap[4] = {-1, 1, 0, 0};
-int strideymap[4] = {0, 0, -1, 1};
-
-enum keydirect{
+// The Function declaration which belong to header file
+typedef enum keydirect_E{
 	up = 0,
 	down = 1,
 	left = 2,
 	right = 3,
-};
-
-enum keydirect keyvalue;
+}keydirect_T;
 
 typedef struct snakebody{
 	int x;
@@ -60,10 +26,48 @@ typedef struct snakebody{
 	struct snakebody *next;
 }snakebody;
 
-snakebody *head;
+typedef struct mazemap{
+	int width;
+	int heigh;
+	int doorx;
+	int doory;
+	int barrier;
+}mazemap;
+
+#define mazecount 9
+#define specialNum 2
 
 int initpizz(int No);
 int destorypizz();
+
+char **pizz;
+snakebody *head;
+
+// After c11, we can set the global var as atomic 
+_Atomic keydirect_T keyvalue;
+// keydirect_T keyvalue;
+
+static int Width=60;
+static int Heigh=25;
+
+static struct termios new_settings,stored_settings;
+// After c11, we can set the global var as atomic 
+// static atomic_int keyNumber;
+static int keyNumber;
+static pthread_mutex_t mutex;
+static pthread_t keyboardlisten;
+static pthread_t workflow;
+static unsigned int speed = 1000000;
+static unsigned int initspeed = 1000000;
+
+int crush = 0;
+char specialbean[specialNum] = {'<', '>'};
+int stridexmap[4] = {-1, 1, 0, 0};
+int strideymap[4] = {0, 0, -1, 1};
+mazemap maze[mazecount] = { {60, 25, 2, 0, 0}, {100, 50, 0, 70, 20}, {45, 25, 24, 10, 5}, 
+							{45, 50, 15, 44, 30}, {100, 25, 0, 20, 50}, {70, 30, 40, 0, 60}, 
+							{60, 30, 0, 10, 15}, {150, 50, 49, 70, 80}, {15, 20, 0, 1, 2}, 
+};
 
 void initkeyboard()
 {
@@ -81,23 +85,25 @@ void closekeyboard(){
 }
 
 void printHead(){
+		// \033c ---> Reset Device <ESC>c
         printf("\033c");
         printf("--------------------------hello, player-----------------------!\n");
         printf("-- Author: NPG-QAT xinghong                                  --\n");
         printf("-- Date:   2022-06-11                                        --\n");
         printf("--                                                           --\n");
         printf("--------------------------------------------------------------!\n");
+		printf(" +++++++++++++++++++++++++++++++++++++++++++++++++++++++  \n");
+		printf("                                                          \n");
+		printf("              welcome to the stupid game                   \n");
+		printf("                                                          \n");
+		printf(" +++++++++++++++++++++++++++++++++++++++++++++++++++++++  \n");
+		printf(" Ps : esc key can help you exit, and left arrow , up arrow , down arrow, right arrow help you contral snake!\n");
+		printf(" Ps : 'o' -> bean, '<' -> slow, '>' -> fast \n");
 	return;
 }
 
 void designGame(){
 	printHead();
-	printf(" +++++++++++++++++++++++++++++++++++++++++++++++++++++++  \n");
-	printf("                                                          \n");
-	printf("              welcome to the stupid game                   \n");
-	printf("                                                          \n");
-	printf(" +++++++++++++++++++++++++++++++++++++++++++++++++++++++  \n");
-	printf(" Ps : esc key can help you exit, and left arrow , up arrow , down arrow, right arrow help you contral snake!\n");
 	printf(" please chose the diffcuty (easy / medium / hard / master) : ");
 	char diffcuty[50];
 	scanf("%s", diffcuty);
@@ -133,7 +139,7 @@ int genbean(){
 
 int convertsnake(){
 	snakebody *cursor = head;
-	enum keydirect initdir;
+	keydirect_T initdir;
 	switch (keyvalue)
 	{
 		case up:
@@ -308,6 +314,7 @@ void movesnake(){
 	crushonbody();
 	crushondoor();
 	handlecrush();
+
 	for(int i=0; i<Heigh; i++){
 		printf("%s\n",pizz[i]);
 	}
@@ -388,42 +395,19 @@ int destorypizz(){
 
 void *Controlflow(void *arg){
 	int ret = 0;
-	initkeyboard();
-	initpizz(0);
-	initsnake();
 	while(genbean());
 	while(1){
-		pthread_mutex_lock(&mutex);
 		printHead();
+		// Check if player escape
 		if(keyNumber == 27){
-			pthread_mutex_unlock(&mutex);
-			break;
-        }
-		switch(keyNumber){
-			case 65:
-				keyvalue = up;
-				break;
-			case 66:
-				keyvalue = down;
-				break;
-			case 68:
-				keyvalue = left;
-				break;
-			case 67:
-				keyvalue = right;
-				break;
-		}	
-		movesnake();
-		if(crush){
-			closekeyboard();
-			pthread_mutex_unlock(&mutex);
 			break;
 		}
-		pthread_mutex_unlock(&mutex);
+		movesnake();
+		if(crush){
+			break;
+		}
 		usleep(speed);
 	}
-	ret = destorypizz();
-	assert(!ret);
 }
 
 int freesnake(){
@@ -439,11 +423,25 @@ int freesnake(){
 }
 
 void *startlistenkeyboard(void *arg){
+	// After C++11 standard, it recommand to use "__atomic"
 	while(1){
 		int temp = getchar();
-		pthread_mutex_lock(&mutex);
+		__sync_lock_test_and_set(&keyNumber, 30);
 		keyNumber = temp;
-		pthread_mutex_unlock(&mutex);
+		switch(keyNumber){
+			case 65:
+				__atomic_store_n(&keyvalue, up, 0);    
+				break;
+			case 66:
+				__atomic_store_n(&keyvalue, down, 0);   
+				break;
+			case 68:
+				__atomic_store_n(&keyvalue, left, 0);   
+				break;
+			case 67:
+				__atomic_store_n(&keyvalue, right, 0);   
+				break;
+		}	
 	}
 }
 
@@ -452,6 +450,10 @@ int main(int argv, char *argc[]){
 	pthread_mutex_init(&mutex, NULL);
 	designGame();
 	while(!crush){
+		initkeyboard();
+		initpizz(0);
+		initsnake();
+
 		int ret = 0;		
 		if(ret = pthread_create(&keyboardlisten, NULL, startlistenkeyboard, NULL)){
 			printf("creat inputpipe thread failed, %s\n", strerror(ret));
@@ -463,27 +465,25 @@ int main(int argv, char *argc[]){
 		}
 		pthread_join(workflow, NULL);
 		pthread_cancel(keyboardlisten);
-		if(!crush){
-			break;
-		}
+
 		printf("your record is %d\n", freesnake());
-		while(crush){
-			char yorn;
-            printf("you lose, please chose if you want start again(y or n) :");
-			scanf("%c", &yorn);
-			if (yorn == 'y'){
+		destorypizz();
+		closekeyboard();
+
+		// Exit the Game process
+		if(!crush){
+			// Use esc to exit the game
+			break;
+		}else{
+			// player can restart game from here
+			printf("you lose, please chose if you want start again(y or n) :");
+			char yorn = getchar();
+			if (yorn == 'y' || yorn == 'Y'){
 				crush = 0;
-				break;
-			}else if(yorn == 'n'){
-				break;
 			}else{
-				printf("please input legal charactor !\n");
-				continue;
+				break;
 			}
 		}
 	}
-	freesnake();
-	closekeyboard();
-
 	return 0;
 }
